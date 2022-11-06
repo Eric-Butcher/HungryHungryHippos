@@ -15,6 +15,8 @@ pygame.display.set_caption("Hungry Hungry Hippos!")
 FPS = 60
 OVER_FONT = pygame.font.Font("freesansbold.ttf", 64)
 OVER_FONT_SMALL = pygame.font.Font("freesansbold.ttf", 32)
+GAME_LENGTH = 30
+STANDARD_VELOCITY = 10
 #Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -31,8 +33,8 @@ horizontal_rectangle = pygame.image.load("images/rectangle_horizontal.png")
 vertical_rectangle = pygame.image.load("images/rectangle_vertical.png")
 
 #Hippo Dimensions
-MOUTH_LENGTH = 80
-SIDE_LENGTH = 30
+MOUTH_LENGTH = 120
+SIDE_LENGTH = 40
 
 
 ##Classes
@@ -121,17 +123,17 @@ class Ball:
         self.x += self.x_vel
 
 def get_random_velocity():
-    retVal = random.randint(-10, 10)
+    retVal = random.randint(-STANDARD_VELOCITY, STANDARD_VELOCITY)
     if retVal == 0:
         retVal += 1
     return retVal
 
 def change_velocity_randomly(initial):
-    push = random.randint(-10, 10)
+    push = random.randint(-STANDARD_VELOCITY, STANDARD_VELOCITY)
     sum = push + initial
     will_change = random.randint(-10, 40)
     if (will_change < 0):
-        if ( (sum != 0) and (sum >= -10) and (sum <= 10) ):
+        if ( (sum != 0) and (sum >= -STANDARD_VELOCITY) and (sum <= STANDARD_VELOCITY) ):
             return sum
         else:
             return initial
@@ -235,9 +237,9 @@ def hippo_eat(balls, hippos):
                     if (ball_y > boundries["top"]) and (ball_y < boundries["bottom"]):
 
                         if (ball.size == "small"):
-                            hippo.score += 3
+                            hippo.score += 1
                         if (ball.size == "medium"):
-                            hippo.score += 2
+                            hippo.score += 1
                         if (ball.size == "large" or ball.size == "xlarge"):
                             hippo.score += 1
                         balls.remove(ball)
@@ -265,22 +267,33 @@ def game_over_text(hippos):
     WINDOW.blit(over_text, (x_pos, y_pos))
 
     WINDOW.blit(top_hippo_score_text, (x_pos, y_pos + 100))
-    WINDOW.blit(bottom_hippo_score_text, (x_pos + quarter_width, y_pos + 100))
-    WINDOW.blit(left_hippo_score_text, (x_pos + (2*quarter_width), y_pos + 100))
-    WINDOW.blit(right_hippo_score_text, (x_pos + (3*quarter_width), y_pos + 100))
+    WINDOW.blit(left_hippo_score_text, (x_pos + (quarter_width), y_pos + 100))
 
-        
+
+    WINDOW.blit(bottom_hippo_score_text, (x_pos + (3*quarter_width) - bottom_hippo_score_text.get_width(), y_pos + 100))
+    WINDOW.blit(right_hippo_score_text, (x_pos + (4*quarter_width) - right_hippo_score_text.get_width(), y_pos + 100))
+
+def summon_balls(ball_amounts, balls):
+    center_x = SCREEN_WIDTH//2
+    center_y = SCREEN_HEIGHT//2
+
+    for s in range(ball_amounts["small"]):
+        balls.append(Ball(center_x, center_y, "small"))
+
+    for m in range(ball_amounts["medium"]):
+        balls.append(Ball(center_x, center_y, "medium"))
+
+    for l in range(ball_amounts["large"]):
+        balls.append(Ball(center_x, center_y, "large"))
+
+    for xl in range(ball_amounts["xlarge"]):
+        balls.append(Ball(center_x, center_y, "xlarge"))
         
 
 
 def main():
 
-    ball_amounts = {
-        "small":90, 
-        "medium":50, 
-        "large":10, 
-        "xlarge":5
-    }
+    
 
     game_end_code = 0
     clock = pygame.time.Clock()
@@ -303,20 +316,28 @@ def main():
     hippos = [top_hippo, bottom_hippo, left_hippo, right_hippo]
 
     balls = []
-    for s in range(ball_amounts["small"]):
-        balls.append(Ball(center_x, center_y, "small"))
+    # for s in range(ball_amounts["small"]):
+    #     balls.append(Ball(center_x, center_y, "small"))
 
-    for m in range(ball_amounts["medium"]):
-        balls.append(Ball(center_x, center_y, "medium"))
+    # for m in range(ball_amounts["medium"]):
+    #     balls.append(Ball(center_x, center_y, "medium"))
 
-    for l in range(ball_amounts["large"]):
-        balls.append(Ball(center_x, center_y, "large"))
+    # for l in range(ball_amounts["large"]):
+    #     balls.append(Ball(center_x, center_y, "large"))
 
-    for xl in range(ball_amounts["xlarge"]):
-        balls.append(Ball(center_x, center_y, "xlarge"))
+    # for xl in range(ball_amounts["xlarge"]):
+    #     balls.append(Ball(center_x, center_y, "xlarge"))
 
+    initial_ball_amounts = {
+        "small":90, 
+        "medium":50, 
+        "large":10, 
+        "xlarge":5
+    }
+
+    summon_balls(initial_ball_amounts, balls)
     
-
+    half_time = False
     
     start_time = time.time()
     running = True
@@ -329,6 +350,11 @@ def main():
         ball_color = (255, 255 - ball_color_variation, 255)
         #ball_color = (255 - ball_color_variation, 255 - ball_color_variation, 255 - ball_color_variation)
         print(ball_color_variation)
+
+        if(time_elapsed >= GAME_LENGTH//2 and not half_time):
+            half_time = True
+            summon_balls(initial_ball_amounts, balls)
+
         
         events = pygame.event.get()
         keys = pygame.key.get_pressed()
@@ -347,17 +373,17 @@ def main():
                 running = False
                 break
 
-        if (len(balls) <= 0 or time_elapsed >= 10):
+        if (len(balls) <= 0 or time_elapsed >= GAME_LENGTH):
             running = False
             game_end_code = 3
             break
 
     if (game_end_code == 3):
         ending = True
-        print("#################")
-        for hippo in hippos:
-            print("Hippo " + hippo.name + " scored: " + str(hippo.score) + "!")
-        print("#################")
+        #print("#################")
+        #for hippo in hippos:
+            #print("Hippo " + hippo.name + " scored: " + str(hippo.score) + "!")
+        #print("#################")
         while ending:
             clock.tick(FPS)
             
