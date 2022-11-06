@@ -13,7 +13,8 @@ pygame.display.set_caption("Hungry Hungry Hippos!")
 ## Game Constants and Files
 
 FPS = 60
-
+OVER_FONT = pygame.font.Font("freesansbold.ttf", 64)
+OVER_FONT_SMALL = pygame.font.Font("freesansbold.ttf", 32)
 #Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -30,7 +31,7 @@ horizontal_rectangle = pygame.image.load("images/rectangle_horizontal.png")
 vertical_rectangle = pygame.image.load("images/rectangle_vertical.png")
 
 #Hippo Dimensions
-MOUTH_LENGTH = 40
+MOUTH_LENGTH = 80
 SIDE_LENGTH = 30
 
 
@@ -243,6 +244,30 @@ def hippo_eat(balls, hippos):
                         #hippo.score += 1
                         #print("Scored!")
 
+def game_over_text(hippos):
+    top_hippo_score = str(hippos[0].score)
+    bottom_hippo_score = str(hippos[1].score)
+    left_hippo_score = str(hippos[2].score)
+    right_hippo_score = str(hippos[3].score)
+
+    top_hippo_score_text = OVER_FONT_SMALL.render(top_hippo_score, True, RED)
+    bottom_hippo_score_text = OVER_FONT_SMALL.render(bottom_hippo_score, True, GREEN)
+    left_hippo_score_text = OVER_FONT_SMALL.render(left_hippo_score, True, YELLOW)
+    right_hippo_score_text = OVER_FONT_SMALL.render(right_hippo_score, True, BLUE)
+
+
+    over_text = OVER_FONT.render("GAME OVER ", True, (255, 255, 255))
+    x_pos = (SCREEN_WIDTH//2) - (over_text.get_width() // 2)
+    y_pos = (SCREEN_HEIGHT//2) - 100
+
+    quarter_width = (over_text.get_width())//4
+
+    WINDOW.blit(over_text, (x_pos, y_pos))
+
+    WINDOW.blit(top_hippo_score_text, (x_pos, y_pos + 100))
+    WINDOW.blit(bottom_hippo_score_text, (x_pos + quarter_width, y_pos + 100))
+    WINDOW.blit(left_hippo_score_text, (x_pos + (2*quarter_width), y_pos + 100))
+    WINDOW.blit(right_hippo_score_text, (x_pos + (3*quarter_width), y_pos + 100))
 
         
         
@@ -299,7 +324,7 @@ def main():
         clock.tick(FPS)
 
         time_elapsed = time.time() - start_time
-        ball_color_variation = 2 * int(time_elapsed)
+        ball_color_variation = 4 * int(time_elapsed)
         global ball_color
         ball_color = (255, 255 - ball_color_variation, 255)
         #ball_color = (255 - ball_color_variation, 255 - ball_color_variation, 255 - ball_color_variation)
@@ -322,7 +347,7 @@ def main():
                 running = False
                 break
 
-        if (len(balls) <= 0 or time_elapsed >= 120):
+        if (len(balls) <= 0 or time_elapsed >= 10):
             running = False
             game_end_code = 3
             break
@@ -334,13 +359,19 @@ def main():
             print("Hippo " + hippo.name + " scored: " + str(hippo.score) + "!")
         print("#################")
         while ending:
+            clock.tick(FPS)
+            
             #show end screen
-            for event in events:
+            game_over_text(hippos)
+            pygame.display.update()
+            
+            for event in pygame.event.get():
+                #print('i got here!')
                 if event.type == pygame.QUIT:
                     ending = False
                     break
     
-    
+    #print("Ending")
     pygame.quit()
     sys.exit()
 
