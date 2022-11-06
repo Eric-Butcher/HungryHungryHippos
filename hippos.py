@@ -1,4 +1,4 @@
-import pygame, math, random, sys
+import pygame, math, random, sys, time
 
 pygame.init()
 
@@ -21,6 +21,9 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 BLUE = (0, 255, 255)
+global ball_color
+ball_color = (255, 255, 255)
+
 
 #Images
 horizontal_rectangle = pygame.image.load("images/rectangle_horizontal.png")
@@ -36,20 +39,52 @@ SIDE_LENGTH = 30
 Hippo Class, will explain later
 """
 class Hippo:
-    def __init__(self, dimensions, color, is_vertical):
+    def __init__(self, dimensions, color, is_vertical, name):
         self.x = dimensions[0]
         self.y = dimensions[1]
+        self.x_initial = dimensions[0]
+        self.y_initial = dimensions[1]
         self.color = color
+        self.is_chewing = False
         self.is_vertical = is_vertical
+        self.score = 0
+        self.name = name
         if (is_vertical):
             self.width = MOUTH_LENGTH
             self.height = SIDE_LENGTH
+            self.width_initial = MOUTH_LENGTH
+            self.height_initial = SIDE_LENGTH
         else:
             self.width = SIDE_LENGTH
             self.height = MOUTH_LENGTH
+            self.width_initial = SIDE_LENGTH
+            self.height_initial = MOUTH_LENGTH
     def draw(self, window):
         pygame.draw.rect(window, self.color, (self.x, self.y, self.width, self.height))
-        
+    def activate_chomp(self):
+        self.is_chewing = True
+        if (self.name == "top"):
+            self.height = self.height_initial * 2
+        elif (self.name == "left"):
+            self.width = self.width_initial * 2
+        elif (self.name == "right"):
+            self.x = self.x_initial - SIDE_LENGTH
+            self.width = self.width_initial + SIDE_LENGTH
+        elif (self.name == "bottom"):
+            self.y = self.y_initial - SIDE_LENGTH
+            self.height = self.height_initial + SIDE_LENGTH
+    def deactivate_chomp(self):
+        self.is_chewing = False
+        if (self.name == "top"):
+            self.height = self.height_initial
+        elif (self.name == "left"):
+            self.width = self.width_initial
+        elif (self.name == "right"):
+            self.x = self.x_initial
+            self.width = self.width_initial 
+        elif (self.name == "bottom"):
+            self.y = self.y_initial 
+            self.height = self.height_initial 
 
 """
 The Ball class creates all of the balls that the hippos will eat. 
@@ -58,7 +93,7 @@ The balls are assigned a random velcoity via get_random_velocity() when initiali
 When the balls hit any wall, they have a 20% chance of having their velocity modified randomly via change_velocity_randomly(initial).
 """
 class Ball:
-    COLOR = WHITE
+    DEFAULT_COLOR = WHITE
     
 
     def __init__(self, x, y, size):
@@ -78,7 +113,7 @@ class Ball:
             self.radius = 10
 
     def draw(self, window):
-        pygame.draw.circle(window, self.COLOR, (self.x, self.y), self.radius)
+        pygame.draw.circle(window, ball_color, (self.x, self.y), self.radius)
 
     def move(self):
         self.y += self.y_vel
@@ -86,6 +121,8 @@ class Ball:
 
 def get_random_velocity():
     retVal = random.randint(-10, 10)
+    if retVal == 0:
+        retVal += 1
     return retVal
 
 def change_velocity_randomly(initial):
@@ -106,6 +143,7 @@ def draw_all(window, balls, hippos):
 
     for hippo in hippos:
         hippo.draw(window)
+        hippo.deactivate_chomp()
 
     for ball in balls:
         ball.draw(window)
@@ -137,17 +175,89 @@ def wall_collision(the_balls):
             the_ball.x_vel *= -1
             the_ball.x_vel = change_velocity_randomly(the_ball.x_vel)
 
+def hippo_collision(balls, hippos):
+    for hippo in hippos:
+            boundries = calcualte_hippo_boundries(hippo)
+            for ball in balls:
+                ball_x = ball.x
+                ball_y = ball.y
+                if (ball_x < boundries["right"]) and (ball.x > boundries["left"]):
+                    if (ball_y > boundries["top"]) and (ball_y < boundries["bottom"]):
+                        ball.x_vel *= -1
+                        ball.y_vel *= -1
+
 def move_all(balls):
     for ball in balls:
         ball.move()
 
+def hippo_chomp(events, hippos):
+    for event in events:
+        if event.type == pygame.KEYDOWN:
+
+            #Top hippo
+            if event.key == pygame.K_q and not hippos[0].is_chewing:
+                hippos[0].activate_chomp()
+                #print("Acitvated!")
+
+            #Left Hippo
+            if event.key == pygame.K_z and not hippos[2].is_chewing:
+                hippos[2].activate_chomp()
+                #print("Acitvated!")
+
+            #Right Hippo
+            if event.key == pygame.K_p and not hippos[3].is_chewing:
+                hippos[3].activate_chomp()
+                # print("Acitvated!")
+
+            #Bottom Hippo
+            if event.key == pygame.K_m and not hippos[1].is_chewing:
+                hippos[1].activate_chomp()
+                #print("Acitvated!")
+
+def calcualte_hippo_boundries(hippo):
+    boundries = {
+        "left":hippo.x, 
+        "right": (hippo.x + hippo.width),
+        "top":hippo.y, 
+        "bottom" :(hippo.y + hippo.height)
+    }
+    return boundries
+
+def hippo_eat(balls, hippos):
+    for hippo in hippos:
+        if hippo.is_chewing:
+            boundries = calcualte_hippo_boundries(hippo)
+            for ball in balls:
+                ball_x = ball.x
+                ball_y = ball.y
+                if (ball_x < boundries["right"]) and (ball.x > boundries["left"]):
+                    if (ball_y > boundries["top"]) and (ball_y < boundries["bottom"]):
+
+                        if (ball.size == "small"):
+                            hippo.score += 3
+                        if (ball.size == "medium"):
+                            hippo.score += 2
+                        if (ball.size == "large" or ball.size == "xlarge"):
+                            hippo.score += 1
+                        balls.remove(ball)
+                        #hippo.score += 1
+                        #print("Scored!")
 
 
+        
+        
 
 
 def main():
 
-    run = True
+    ball_amounts = {
+        "small":90, 
+        "medium":50, 
+        "large":10, 
+        "xlarge":5
+    }
+
+    game_end_code = 0
     clock = pygame.time.Clock()
 
     center_x = SCREEN_WIDTH//2
@@ -160,47 +270,76 @@ def main():
         "right": (SCREEN_WIDTH - SIDE_LENGTH, SCREEN_HEIGHT//2 - MOUTH_LENGTH//2)
     }
 
-    top_hippo = Hippo(hippoStarts["top"], RED, True)
-    bottom_hippo = Hippo(hippoStarts["bottom"], GREEN, True)
-    left_hippo = Hippo(hippoStarts["left"], YELLOW, False)
-    right_hippo = Hippo(hippoStarts["right"], BLUE, False)
+    top_hippo = Hippo(hippoStarts["top"], RED, True, "top")
+    bottom_hippo = Hippo(hippoStarts["bottom"], GREEN, True, "bottom")
+    left_hippo = Hippo(hippoStarts["left"], YELLOW, False, "left")
+    right_hippo = Hippo(hippoStarts["right"], BLUE, False, "right")
 
     hippos = [top_hippo, bottom_hippo, left_hippo, right_hippo]
 
     balls = []
-    for s in range(90):
+    for s in range(ball_amounts["small"]):
         balls.append(Ball(center_x, center_y, "small"))
 
-    for m in range(50):
+    for m in range(ball_amounts["medium"]):
         balls.append(Ball(center_x, center_y, "medium"))
 
-    for l in range(10):
+    for l in range(ball_amounts["large"]):
         balls.append(Ball(center_x, center_y, "large"))
 
-    for xl in range(5):
+    for xl in range(ball_amounts["xlarge"]):
         balls.append(Ball(center_x, center_y, "xlarge"))
 
     
 
     
-
+    start_time = time.time()
     running = True
     while running:
         clock.tick(FPS)
 
+        time_elapsed = time.time() - start_time
+        ball_color_variation = 2 * int(time_elapsed)
+        global ball_color
+        ball_color = (255, 255 - ball_color_variation, 255)
+        #ball_color = (255 - ball_color_variation, 255 - ball_color_variation, 255 - ball_color_variation)
+        print(ball_color_variation)
+        
+        events = pygame.event.get()
+        keys = pygame.key.get_pressed()
+        pygame.key.set_repeat(5000)
+
+        hippo_chomp(events, hippos)
+        hippo_eat(balls, hippos)
         draw_all(WINDOW, balls, hippos) ##NEEDS TO BE UPDATED
         move_all(balls)
+        hippo_collision(balls, hippos)
         wall_collision(balls)
         #balls = goal_collision(balls, goal) ##NEEDS TO BE UPDATED
 
-        keys = pygame.key.get_pressed()
-        #move_hippos(events, hippos)
-
-        events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
                 running = False
                 break
+
+        if (len(balls) <= 0 or time_elapsed >= 120):
+            running = False
+            game_end_code = 3
+            break
+
+    if (game_end_code == 3):
+        ending = True
+        print("#################")
+        for hippo in hippos:
+            print("Hippo " + hippo.name + " scored: " + str(hippo.score) + "!")
+        print("#################")
+        while ending:
+            #show end screen
+            for event in events:
+                if event.type == pygame.QUIT:
+                    ending = False
+                    break
+    
     
     pygame.quit()
     sys.exit()
